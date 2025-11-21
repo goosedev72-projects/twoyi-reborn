@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths-ignore:
+      - '*.md'
+  push:
+    paths-ignore:
+      - '*.md'
+    branches-ignore:
+      - dependabot/**
+
+jobs:
+  debug-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Download ROM
+        run: |
+          mkdir ./app/src/main/assets
+          cd ./app/src/main/assets
+          curl -OL https://github.com/topminipie/twoyi/releases/download/0.5.4-rom/rootfs.7z
+          echo '6ddd7424eb897310ee5858f2e392750ec5ad1f5bbef1e30c7d3493142cbf4ff1  rootfs.7z' | sha256sum -c
+
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: gradle
+
+      - name: Install NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28-beta2
+          local-cache: true
+
+      - name: Install Rust
+        run: |
+          rustup update
+          rustup target add aarch64-linux-android
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'app/rs'
+
+      - name: Install my fork cargo-ndk
+        run: |
+          cargo install --locked --git https://github.com/topminipie/cargo-ndk.git
+
+      - name: Build libtwoyi.so
+        run: |
+          cd ./app/rs
+          cargo ndk -t arm64-v8a -o ../src/main/jniLibs build --release
+          
+      - name: Check code formatting
+        continue-on-error: true
+        run: |
+          cd ./app/rs
+          cargo fmt --all -- --check
+
+      - name: Build app
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload Apk
+        if: github.repository == 'topminipie/twoyi'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
