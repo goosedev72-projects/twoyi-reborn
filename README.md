@@ -24,7 +24,7 @@
     <sub>
       Made with ❤︎ by
       <a href="https://github.com/tiann">
-        weishu
+        weishu, reborn by GooseDev72
       </a>
     </sub>
   </p>
