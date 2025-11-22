@@ -32,31 +32,6 @@ jobs:
           ndk-version: r28-beta2
           local-cache: true
 
-      - name: Install Rust
-        run: |
-          rustup update
-          rustup target add aarch64-linux-android
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: 'app/rs'
-
-      - name: Install my fork cargo-ndk
-        run: |
-          cargo install --locked --git https://github.com/topminipie/cargo-ndk.git
-
-      - name: Build libtwoyi.so
-        run: |
-          cd ./app/rs
-          cargo ndk -t arm64-v8a -o ../src/main/jniLibs build --release
-          
-      - name: Check code formatting
-        continue-on-error: true
-        run: |
-          cd ./app/rs
-          cargo fmt --all -- --check
-
       - name: Build app
         run: ./gradlew assembleRelease --no-daemon
 
